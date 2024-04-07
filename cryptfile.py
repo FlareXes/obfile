@@ -55,7 +55,7 @@ class Utils:
         else:
             print("[*] It seems you have changed filename after encryption.")
             print(f"[*] Decrypted file will be saved as `{file + '.cryptfile'}`.")
-            return file + '.cryptfile'
+            return file + ".cryptfile"
 
     @staticmethod
     def save_cc(data, file):
@@ -107,15 +107,15 @@ class Utils:
         return data
 
     @staticmethod
-    def zip_dir(directory):
-        zip_filename = os.path.basename(directory)
-        output_path = make_archive(zip_filename, "zip", directory)
+    def archive_dir(directory):
+        archive_filename = os.path.basename(directory)
+        output_path = make_archive(archive_filename, "tar", directory)
         return output_path
 
     @staticmethod
-    def unzip_dir(zipfile):
-        zip_filename = zipfile.split(".zip")[0]
-        unpack_archive(zipfile, extract_dir=zip_filename)
+    def unarchive_dir(archive_file):
+        archive_filename = archive_file.split(".tar")[0]
+        unpack_archive(archive_file, extract_dir=archive_filename)
 
 
 class Security:
@@ -131,7 +131,7 @@ class Security:
 
         self.mp = master_password_hash
         # Setting cost factor for the key derivation function
-        self.cost_factor = 2 ** 20
+        self.cost_factor = 2**20
         self.rounds = 8
         self.parallel_factor = 1
         self.key_length = 32
@@ -139,7 +139,7 @@ class Security:
     @staticmethod
     def getpass(no_check: bool = False):
         """
-        Hash the passwords entered by the user and return a hashed password if `no_check` is True, 
+        Hash the passwords entered by the user and return a hashed password if `no_check` is True,
         else compare the two passwords  to confirm while encryption and return a hashed password if they match.
 
         :param no_check: If True, do not check for password matching. Defaults to False.
@@ -150,7 +150,8 @@ class Security:
 
         # Hash the passwords entered by the user
         p1 = SHA256Hash(getpass("Enter Password: ").encode("utf-8")).hexdigest()
-        if no_check: return p1.encode("utf-8")
+        if no_check:
+            return p1.encode("utf-8")
         p2 = SHA256Hash(getpass("Re-enter Password: ").encode("utf-8")).hexdigest()
 
         if p1 == p2:
@@ -169,7 +170,14 @@ class Security:
         :rtype: bytes
         """
 
-        return scrypt(str(self.mp), str(_salt), self.key_length, self.cost_factor, self.rounds, self.parallel_factor)
+        return scrypt(
+            str(self.mp),
+            str(_salt),
+            self.key_length,
+            self.cost_factor,
+            self.rounds,
+            self.parallel_factor,
+        )
 
     def encrypt(self, data: bytes):
         """
@@ -277,31 +285,31 @@ class Cryptfile:
             print(f"Decrypting [ {file} ] \t [+] Completed", end="\n", flush=True)
 
     def encrypt_dir(self):
-        zips_loc = set()
+        archives_location = set()
         print(f"Archiving {self.directories}\n")
         for directory in self.directories:
-            zips_loc.add(Utils.zip_dir(directory))
+            archives_location.add(Utils.archive_dir(directory))
 
-        Cryptfile(files=zips_loc).encrypt_file()
+        Cryptfile(files=archives_location).encrypt_file()
 
-        # Remove zipfile after encryption
+        # Remove archive_file after encryption
         print(f"Removing archived files...")
-        set(map(lambda zipfile: os.remove(zipfile), zips_loc))
+        set(map(lambda archive_file: os.remove(archive_file), archives_location))
 
     def decrypt_dir(self):
-        zips_loc = set()
+        archives_location = set()
         Cryptfile(self.files).decrypt_file()
 
         print(f"Extracting archived files {self.files}")
         for file in self.files:
-            # extract zipfile after encryption
-            zip_file = file.split(".enc")[0]
-            Utils.unzip_dir(zip_file)
-            zips_loc.add(zip_file)
+            # extract archive_file after encryption
+            archive_file = file.split(".enc")[0]
+            Utils.unarchive_dir(archive_file)
+            archives_location.add(archive_file)
 
-        # Remove zipfile after encryption
+        # Remove archive_file after encryption
         print(f"Removing archived files...")
-        set(map(lambda zipfile: os.remove(zipfile), zips_loc))
+        set(map(lambda archive_file: os.remove(archive_file), archives_location))
 
 
 def process(args):
@@ -327,7 +335,12 @@ def process(args):
         Cryptfile(directories=set(directories)).encrypt_dir()
         # delete directory if `-r` is set
         if args.remove:
-            set(map(lambda directory: rmtree(directory, ignore_errors=False), directories))
+            set(
+                map(
+                    lambda directory: rmtree(directory, ignore_errors=False),
+                    directories,
+                )
+            )
 
     # Start directory archiving and encryption if variable `files` is not none
     files = args.decrypt_dir
@@ -339,17 +352,39 @@ def process(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog="cryptfile",
-                                     description="Command line utility to encrypt or decrypt the file with AES256.",
-                                     formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=47))
+    parser = argparse.ArgumentParser(
+        prog="cryptfile",
+        description="Command line utility to encrypt or decrypt the file with AES256.",
+        formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=47),
+    )
 
-    parser.add_argument("-r", "--remove", action="store_true",
-                        help="delete original file or directory after encryption or decryption")
-    parser.add_argument("-e", "--encrypt", nargs="+", type=str, help="encrypt the specified file")
-    parser.add_argument("-d", "--decrypt", nargs="+", type=str, help="decrypt the specified file")
-    parser.add_argument("-ed", "--encrypt-dir", nargs="+", type=str, help="encrypt directory")
-    parser.add_argument("-dd", "--decrypt-dir", nargs="+", type=str, help="decrypt directory")
+    parser.add_argument(
+        "-r",
+        "--remove",
+        action="store_true",
+        help="delete original file or directory after encryption or decryption",
+    )
+    parser.add_argument(
+        "-c",
+        "--compress",
+        action="store_true",
+        help="compress directory for smaller encrypted file (slows down process)",
+    )
+    parser.add_argument(
+        "-e", "--encrypt", nargs="+", type=str, help="encrypt the specified file"
+    )
+    parser.add_argument(
+        "-d", "--decrypt", nargs="+", type=str, help="decrypt the specified file"
+    )
+    parser.add_argument(
+        "-ed", "--encrypt-dir", nargs="+", type=str, help="encrypt directory"
+    )
+    parser.add_argument(
+        "-dd", "--decrypt-dir", nargs="+", type=str, help="decrypt directory"
+    )
 
     args = parser.parse_args()
-    if len(sys.argv) == 1: parser.print_help(); sys.exit(1)
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
     process(args)
