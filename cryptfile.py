@@ -22,6 +22,7 @@ class Template:
         salt: bytes
         tag: bytes
         nonce: bytes
+        filename: str = ""
 
 
 class Utils:
@@ -71,17 +72,16 @@ class Utils:
             pickle.dump(data.__dict__, f, -1)
 
     @staticmethod
-    def save_file(data, file):
+    def save_file(data, filename):
         """Saves data to a file.
 
         :param data: The data to be saved
         :type data: bytes
-        :param file: The file to save the data to
-        :type: file: str
+        :param filename: The file to save the data to
+        :type: filename: str
         """
 
-        file = Utils._rename(file)
-        with open(file, "wb") as f:
+        with open(filename, "wb") as f:
             f.write(data)
 
     @staticmethod
@@ -211,7 +211,7 @@ class Security:
         """
 
         # Extract the ciphertext, salt, tag, and nonce from the CipherConfig object
-        ciphertext, _salt, tag, nonce = Utils.attrs(cc)
+        ciphertext, _salt, tag, nonce, _ = Utils.attrs(cc)
         # Derive a key from the master password hash and the salt
         key = self._kdf_scrypt(_salt)
         # Initialize a cipher object with the key, the GCM mode, and the nonce
@@ -252,10 +252,10 @@ class Cryptfile:
         for file in self.files:
             # Get file content in bytes format to encrypt
             data = Utils.open_file(file)
-
             print(f"\nEncrypting [ {file} ]", end="\r")
-            # Encrypt file content stored in 'data' variable
+
             cc = Security(password_hash).encrypt(data)
+            cc.filename = file
 
             # Save encrypted content with original file and '.enc' extension
             Utils.save_cc(cc, file)
@@ -276,12 +276,9 @@ class Cryptfile:
             cc = Utils.open_file(file, pickled=True)
 
             print(f"\nDecrypting [ {file} ]", end="\r")
-            # Decrypt file content stored in 'cc' variable
             data = Security(password_hash).decrypt(cc)
 
-            # Save decrypted content with provided filename
-            # without '.enc' extension or with '.cryptfile' extension
-            Utils.save_file(data, file)
+            Utils.save_file(data, cc.filename)
             print(f"Decrypting [ {file} ] \t [+] Completed", end="\n", flush=True)
 
     def encrypt_dir(self):
