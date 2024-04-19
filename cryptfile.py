@@ -107,14 +107,22 @@ class Utils:
         return data
 
     @staticmethod
-    def archive_dir(directory):
-        archive_filename = os.path.basename(directory)
-        output_path = make_archive(archive_filename, "tar", directory)
+    def archive_dir(directory, compress=False):
+        if compress:
+            archive_filename = os.path.basename(directory)
+            output_path = make_archive(archive_filename, "zip", directory)
+        else:
+            archive_filename = os.path.basename(directory)
+            output_path = make_archive(archive_filename, "tar", directory)
         return output_path
 
     @staticmethod
     def unarchive_dir(archive_file):
-        archive_filename = archive_file.split(".tar")[0]
+        if "tar" in archive_file:
+            archive_filename = archive_file.split(".tar")[0]
+        else:
+            archive_filename = archive_file.split(".zip")[0]
+
         unpack_archive(archive_file, extract_dir=archive_filename)
 
 
@@ -281,11 +289,11 @@ class Cryptfile:
             Utils.save_file(data, cc.filename)
             print(f"Decrypting [ {file} ] \t [+] Completed", end="\n", flush=True)
 
-    def encrypt_dir(self):
+    def encrypt_dir(self, compress=False):
         archives_location = set()
         print(f"Archiving {self.directories}\n")
         for directory in self.directories:
-            archives_location.add(Utils.archive_dir(directory))
+            archives_location.add(Utils.archive_dir(directory, compress=compress))
 
         Cryptfile(files=archives_location).encrypt_file()
 
@@ -329,7 +337,7 @@ def process(args):
     # Start directory archiving and encryption if variable `directories` is not none
     directories = args.encrypt_dir
     if directories is not None:
-        Cryptfile(directories=set(directories)).encrypt_dir()
+        Cryptfile(directories=set(directories)).encrypt_dir(compress=args.compress)
         # delete directory if `-r` is set
         if args.remove:
             set(
@@ -358,6 +366,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "-r",
         "--remove",
+        action="store_true",
+        help="delete original file or directory after encryption or decryption",
+    )
+    parser.add_argument(
+        "-c"
+        "--compress",
         action="store_true",
         help="delete original file or directory after encryption or decryption",
     )
